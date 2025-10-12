@@ -1,3 +1,19 @@
+
+# create bucket
+# aws s3api create-bucket \
+#   --bucket vadivel-terraform-state-bucket-jenkins \
+#   --region ap-south-1 \
+#   --create-bucket-configuration LocationConstraint=ap-south-1 \
+#   --profile devops
+
+#enable versioning
+
+# aws s3api put-bucket-versioning \
+#   --bucket vadivel-terraform-state-bucket-jenkins \
+#   --versioning-configuration Status=Enabled \
+#   --profile devops
+
+
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
   tags = {
@@ -119,5 +135,17 @@ resource "aws_instance" "name" {
   associate_public_ip_address = true
   user_data                   = file("jenkins.sh")
 }
+
+data "external" "jenkins_password" {
+  program = [
+    "bash",
+    "${path.module}/get_jenkins_password.sh",
+    aws_instance.name.public_ip,
+    var.ssh_key_path
+  ]
+  depends_on = [aws_instance.name]
+}
+
+
 
 data "aws_caller_identity" "current" {}
