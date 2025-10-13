@@ -6,7 +6,7 @@
 #   --create-bucket-configuration LocationConstraint=ap-south-1 \
 #   --profile devops
 
-#enable versioning
+# enable versioning
 
 # aws s3api put-bucket-versioning \
 #   --bucket vadivel-terraform-state-bucket-jenkins \
