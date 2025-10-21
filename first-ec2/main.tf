@@ -1,47 +1,57 @@
-resource "aws_vpc" "name" {
-  cidr_block           = "10.0.0.0/16"
+resource "aws_vpc" "my_vpc" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name        = "my-comp"
+    Environment = "dev"
+  }
+  enable_dns_support   = true #VPC can resolve DNS names (required for almost all network communication).
   enable_dns_hostnames = true
-  enable_dns_support   = true
-  tags = {
-    Name = "custom-vpc"
-  }
 }
 
-resource "aws_subnet" "name" {
-  cidr_block              = "10.0.0.0/17"
-  vpc_id                  = aws_vpc.name.id
-  availability_zone       = "us-east-1a"
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.my_vpc.id
+  tags = {
+    Name = "main-igw"
+  }
+
+}
+
+resource "aws_subnet" "my_subnet" {
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
+  availability_zone       = "us-east-1a"
   tags = {
-    Name = "custom-subnet"
+    Name = "public-subnet"
   }
 }
 
-resource "aws_internet_gateway" "name" {
-  vpc_id = aws_vpc.name.id
-  tags = {
-    Name = "custom-igw"
-  }
-}
-resource "aws_route_table" "name" {
-  vpc_id = aws_vpc.name.id
+# Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.my_vpc.id
+
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.name.id
+    gateway_id = aws_internet_gateway.igw.id
   }
+
   tags = {
-    Name = "custom-rt"
+    Name = "public-rt"
   }
 }
 
-resource "aws_route_table_association" "name" {
-  subnet_id      = aws_subnet.name.id
-  route_table_id = aws_route_table.name.id
+
+# Associate Route Table with Subnet
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.my_subnet.id
+  route_table_id = aws_route_table.public.id
 }
-resource "aws_security_group" "name" {
-  name        = "custom-sg"
-  description = "Security group"
-  vpc_id      = aws_vpc.name.id
+
+resource "aws_security_group" "my_sec_group" {
+  name        = "my_sec"
+  description = "This is the security group"
+  vpc_id      = aws_vpc.my_vpc.id
   ingress {
     description = "SSH"
     from_port   = 22
@@ -49,6 +59,15 @@ resource "aws_security_group" "name" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -57,30 +76,46 @@ resource "aws_security_group" "name" {
   }
 }
 
-resource "aws_instance" "name" {
-  ami                    = "ami-0b09ffb6d8b58ca91"
-  instance_type          = "t2.micro"
-  key_name               = "common-key"
-  subnet_id              = aws_subnet.name.id
-  vpc_security_group_ids = [aws_security_group.name.id]
+resource "aws_network_acl" "public_nacl" {
+  vpc_id     = aws_vpc.my_vpc.id
+  subnet_ids = [aws_subnet.my_subnet.id]
+
+  # Allow all inbound traffic (simpler for public subnet)
+  ingress {
+    rule_no    = 100
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  # Allow all outbound traffic
+  egress {
+    rule_no    = 100
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
   tags = {
-    Name        = "MyFirstEC2"
+    Name = "public-nacl"
+  }
+}
+
+
+resource "aws_instance" "name" {
+  ami                    = "ami-0360c520857e3138f"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.my_subnet.id
+  vpc_security_group_ids = [aws_security_group.my_sec_group.id]
+  key_name               = "common-key"
+  tags = {
+    Name        = "first-ec2"
     Environment = "Dev"
   }
-}
-
-resource "aws_s3_bucket" "tf_state" {
-  bucket = "terraform-statefile-bucket-091756093438"
-
-  tags = {
-    Name = "terraform-state"
-  }
-}
-
-resource "aws_s3_bucket_versioning" "versioning" {
-  bucket = aws_s3_bucket.tf_state.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
+  associate_public_ip_address = true
+  user_data                   = file("git-m2-angular.sh")
 }

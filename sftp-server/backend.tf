@@ -3,7 +3,7 @@
 terraform {
   backend "s3" {
     bucket  = "vadivel-tf-state-buc"
-    key     = "ec2-fullstack/terraform.tfstate"
+    key     = "sftp-server/terraform.tfstate"
     region  = "us-east-1"
     profile = "devops"
     encrypt = true
