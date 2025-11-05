@@ -107,7 +107,7 @@ resource "aws_network_acl" "public_nacl" {
 
 
 resource "aws_instance" "name" {
-  ami                    = "ami-0360c520857e3138f"
+  ami                    = "ami-0341d95f75f311023"
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.my_subnet.id
   vpc_security_group_ids = [aws_security_group.my_sec_group.id]
