@@ -108,7 +108,7 @@ resource "aws_network_acl" "public_nacl" {
 
 resource "aws_instance" "name" {
   ami                    = "ami-0341d95f75f311023"
-  instance_type          = "t2.micro"
+  instance_type          = "t3.large"
   subnet_id              = aws_subnet.my_subnet.id
   vpc_security_group_ids = [aws_security_group.my_sec_group.id]
   key_name               = "common-key"
@@ -117,5 +117,10 @@ resource "aws_instance" "name" {
     Environment = "Dev"
   }
   associate_public_ip_address = true
-  user_data                   = file("git-m2-angular.sh")
+  #user_data                   = file("git-m2-angular.sh")
+  user_data = file("spypark-setup.sh")
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
 }
